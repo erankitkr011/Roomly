@@ -1,8 +1,12 @@
 const mongoose = require("mongoose");
-const Room = require("./Room");
 
 const billSchema = new mongoose.Schema(
   {
+    room: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
+      required: true,
+    },
     month: {
       type: String,
       required: true,
@@ -10,7 +14,7 @@ const billSchema = new mongoose.Schema(
     },
     previousReading: {
       type: Number,
-      required: true,
+      required: false,
       min: 0,
     },
     currentReading: {
@@ -43,11 +47,6 @@ const billSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    room: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Room",
-      required: true,
-    },
     status: {
       type: String,
       enum: ["Pending", "Verified", "Paid"],
@@ -57,11 +56,22 @@ const billSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🔁 Auto calculate before saving
+//
+// ─── BILL LOGIC ────────────────────────────────────────────────
+//
+
+// Before validation — calculate units and total
 billSchema.pre("validate", async function (next) {
   try {
+    const Room = mongoose.model("Room");
     const room = await Room.findById(this.room);
-    if (!room) return next(new Error("Associated room not found"));
+
+    if (!room) return next(new Error("Room not found"));
+
+    // Auto-set previousReading if not provided
+    if (this.isNew && (this.previousReading === undefined || this.previousReading === null)) {
+      this.previousReading = room.currentMeterReading || 0;
+    }
 
     // Prevent invalid readings
     if (this.currentReading < this.previousReading) {
@@ -71,9 +81,10 @@ billSchema.pre("validate", async function (next) {
     // Compute units consumed
     this.unitsConsumed = this.currentReading - this.previousReading;
 
-    // Calculate total (rent + electricity)
-    this.totalAmount =
-      room.pricePerMonth + this.unitsConsumed * room.perUnitRate;
+    // Compute total: room rent + (units * rate)
+    const rate = room.perUnitRate || 0;
+    const rent = room.pricePerMonth || 0;
+    this.totalAmount = rent + this.unitsConsumed * rate;
 
     next();
   } catch (err) {
@@ -81,26 +92,22 @@ billSchema.pre("validate", async function (next) {
   }
 });
 
-// 📅 Auto set previousReading from last bill
-billSchema.pre("validate", async function (next) {
-  if (this.isNew && this.previousReading === undefined) {
-    const lastBill = await mongoose.model("Bill").findOne({
-      room: this.room,
-      tenant: this.tenant,
-    }).sort({ createdAt: -1 });
-
-    if (lastBill) {
-      this.previousReading = lastBill.currentReading;
-    } else {
-      const room = await Room.findById(this.room);
-      this.previousReading = room?.currentMeterReading || 0;
-    }
+// After save — update room’s currentMeterReading for next cycle
+billSchema.post("save", async function (doc, next) {
+  try {
+    await mongoose.model("Room").findByIdAndUpdate(doc.room, {
+      currentMeterReading: doc.currentReading,
+    });
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 });
 
+// Indexes for quick lookups
 billSchema.index({ landlord: 1 });
 billSchema.index({ tenant: 1 });
 billSchema.index({ status: 1 });
+billSchema.index({ month: 1 });
 
 module.exports = mongoose.model("Bill", billSchema);
