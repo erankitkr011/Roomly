@@ -51,11 +51,20 @@ const roomSchema = new mongoose.Schema(
       enum: ["Vacant", "OccupiedVacant", "Occupied"],
       default: "Vacant",
     },
-    location: {
-      type: String,
-      required: true,
-      trim: true,
+    // location: {
+    //   type: String,
+    //   required: true,
+    //   trim: true,
+    // },
+    address: {
+      houseNo: { type: String, trim: true },
+      village: { type: String, trim: true },
+      landmark: { type: String, trim: true },
+      city: { type: String, required: true, trim: true },
+      state: { type: String, required: true, trim: true },
+      pincode: { type: String, required: true, trim: true },
     },
+
     images: {
       type: [String],
       default: [],
