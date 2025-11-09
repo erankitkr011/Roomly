@@ -14,11 +14,7 @@ const generateOtp = async() =>{
         lowerCaseAlphabets:false,
         specialChars:false
     });
-    const existingOtp = await OTP.findOne({otp});
-    if(existingOtp){
-        return await generateOtp();
-    }
-    return otp;
+    
 }
 
 const sendotp = async(req,res,next)=>{
