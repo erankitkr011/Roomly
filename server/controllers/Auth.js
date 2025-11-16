@@ -1,53 +1,211 @@
-const OTP = require('../models/Otp');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Profile = require('../models/Profile');
-const otpGenerator = require('otp-generator');
-const becrypt = require('bcrypt');
-const {mailSender} = require('../utils/mailSender');
-const {passwordUpdated} = require('../mail/templates/passwordUpdate');
-require('dotenv').config();
+const authService = require("../services/authService");
 
-const generateOtp = async() =>{
-    const otp = otpGenerator.generate(6,{
-        upperCaseAlphabets:false,
-        lowerCaseAlphabets:false,
-        specialChars:false
+// Send OTP for signup verification
+exports.sendotp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+    await authService.sendOtp(email);
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully to your email",
     });
-    const existingOtp = await OTP.findOne({otp});
-    if(existingOtp){
-        return await generateOtp();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error.message || "Something went wrong while sending otp",
+    });
+  }
+};
+
+// Signup new user
+exports.signup = async (req, res) => {
+  try {
+    const { firstName, lastName, middleName, email, password, confirmPassword, accountType, otp } = req.body;
+
+    if (!firstName || !lastName || !email || !password || !confirmPassword || !accountType || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
-    return otp;
-}
 
-const sendotp = async(req,res,next)=>{
-    try{
-        const {email} = req.body;
-        console.log(email);
-
-        const isUserExist = await User.findOne({email:email});
-        if(isUserExist){
-            return res.status(401).json({
-                success:false,
-                message:"User with this email already exists"
-            })
-        }
-
-        const otp = await generateOtp();
-
-        await OTP.create({email,otp});
-        return res.status(200).json({
-            success:true,
-            message:"OTP sent successfully",
-            otp:otp
-        })
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
     }
-    catch(error){
-        console.log(error);
-        return res.status(500).json({
-            success:false,
-            message:"Something went wrong while sending otp"
-        })
+
+    const user = await authService.signup({
+      firstName,
+      lastName,
+      middleName,
+      email,
+      password,
+      accountType,
+      otp,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User registered successfully",
+      user,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error in signup. Please try again.",
+    });
+  }
+};
+
+// Login user
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
     }
-}
+
+    const { user, token } = await authService.login(email, password);
+
+    const options = {
+      expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      httpOnly: true,
+    };
+
+    res.cookie("token", token, options).status(200).json({
+      success: true,
+      token,
+      user,
+      message: "User logged in successfully",
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error.message || "Login failed. Please try again.",
+    });
+  }
+};
+
+// Change password
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All password fields are required",
+      });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New passwords do not match",
+      });
+    }
+
+    await authService.changePassword(req.user.id, oldPassword, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: error.message || "Error changing password. Please try again.",
+    });
+  }
+};
+
+// Request password reset token
+exports.resetPasswordToken = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    await authService.requestPasswordReset(email);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset link sent to your email",
+    });
+  } catch (error) {
+    return res.status(404).json({
+      success: false,
+      message: error.message || "Error sending reset link. Please try again.",
+    });
+  }
+};
+
+// Reset password using token
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    await authService.resetPassword(token, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error resetting password. Please try again.",
+    });
+  }
+};
+
+// Logout user
+exports.logout = async (req, res) => {
+  try {
+    res.cookie("token", "", {
+      expires: new Date(Date.now()),
+      httpOnly: true,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error logging out",
+    });
+  }
+};

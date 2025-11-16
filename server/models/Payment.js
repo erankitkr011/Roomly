@@ -7,7 +7,7 @@ const paymentSchema = new mongoose.Schema(
       ref: "Bill",
       required: true, // Every payment belongs to a bill
     },
-    tenant: {
+    renter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -27,9 +27,14 @@ const paymentSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    mode: {
+      type: String,
+      enum: ["Online", "Cash"],
+      default: "Cash",
+    },
     paymentMethod: {
       type: String,
-      enum: ["Cash", "UPI", "Bank Transfer", "Card", "Other"],
+      enum: ["Cash", "UPI", "Bank Transfer", "Card", "Razorpay", "Other"],
       default: "Cash",
     },
     transactionId: {
@@ -43,8 +48,12 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Pending", "Completed", "Failed"],
-      default: "Pending",
+      enum: ["Processing", "Successful", "Failed"],
+      default: "Processing",
+    },
+    invoiceUrl: {
+      type: String,
+      default: null,
     },
     notes: {
       type: String,
@@ -55,16 +64,16 @@ const paymentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-update bill status when payment is completed
+// Auto-update bill status when payment is successful
 paymentSchema.post("save", async function (doc, next) {
-  if (doc.status === "Completed") {
+  if (doc.status === "Successful") {
     await mongoose.model("Bill").findByIdAndUpdate(doc.bill, { status: "Paid" });
   }
   next();
 });
 
 // Common indexes for queries
-paymentSchema.index({ tenant: 1 });
+paymentSchema.index({ renter: 1 });
 paymentSchema.index({ landlord: 1 });
 paymentSchema.index({ bill: 1 });
 paymentSchema.index({ status: 1 });

@@ -31,7 +31,7 @@ const roomSchema = new mongoose.Schema(
       required: true,
       default: 8,
     },
-    featues: {
+    features: {
       type: [String],
       default: [],
       trim: true,
@@ -41,7 +41,7 @@ const roomSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    tenant: {
+    renter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,

@@ -28,7 +28,8 @@ const userSchema = new mongoose.Schema(
     },
     accountType: {
       type: String,
-      enum: ["Admin", "Landlord", "Tenant"],
+      enum: ["Admin", "Landlord", "Renter"],
+      required: true,
     },
     additionalDetails: {
       type: mongoose.Schema.Types.ObjectId,

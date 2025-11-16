@@ -17,7 +17,7 @@ const transactionHistorySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    tenant: {
+    renter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -61,7 +61,7 @@ const transactionHistorySchema = new mongoose.Schema(
 );
 
 transactionHistorySchema.index({ landlord: 1 });
-transactionHistorySchema.index({ tenant: 1 });
+transactionHistorySchema.index({ renter: 1 });
 transactionHistorySchema.index({ bill: 1 });
 
 module.exports = mongoose.model("TransactionHistory", transactionHistorySchema);
