@@ -14,16 +14,14 @@ const profileSchema = new mongoose.Schema(
         contactNumber: {
             type: String,
             trim: true,
-            unique: true,
         },
         aadharNo: {
             type: String,
             trim: true,
-            unique: true,
         },
         aadharImage: {
             type: String,
-            required: true,
+            default: "",
         }
     }
 );

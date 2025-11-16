@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const maintenanceRequestSchema = new mongoose.Schema(
   {
-    tenant: {
+    renter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -50,7 +50,7 @@ const maintenanceRequestSchema = new mongoose.Schema(
 );
 
 maintenanceRequestSchema.index({ landlord: 1 });
-maintenanceRequestSchema.index({ tenant: 1 });
+maintenanceRequestSchema.index({ renter: 1 });
 maintenanceRequestSchema.index({ status: 1 });
 
 module.exports = mongoose.model("MaintenanceRequest", maintenanceRequestSchema);

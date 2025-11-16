@@ -1,14 +1,16 @@
+const mongoose = require("mongoose");
+
 const notificationSchema = new mongoose.Schema(
   {
-    landlord: {
+    sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true, // The sender of the notification
-    },
-    title: {
-      type: String,
       required: true,
-      trim: true,
+    },
+    receiver: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
     message: {
       type: String,
@@ -17,21 +19,22 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["Bill", "Payment", "System", "Reminder", "Alert"],
+      enum: ["Bill", "Payment", "System", "Reminder", "Alert", "Chat"],
       default: "System",
     },
-    targetTenants: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // All tenants who should see the notification
-      },
-    ],
-    isReadBy: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // Tenants who have already read the notification
-      },
-    ],
+    read: {
+      type: Boolean,
+      default: false,
+    },
+    link: {
+      type: String,
+      default: null, // Optional link to related resource
+    },
   },
   { timestamps: true }
 );
+
+notificationSchema.index({ receiver: 1, read: 1 });
+notificationSchema.index({ sender: 1 });
+
+module.exports = mongoose.model("Notification", notificationSchema);

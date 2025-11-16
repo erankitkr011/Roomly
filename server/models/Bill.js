@@ -42,7 +42,7 @@ const billSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    tenant: {
+    renter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -51,6 +51,17 @@ const billSchema = new mongoose.Schema(
       type: String,
       enum: ["Pending", "Verified", "Paid"],
       default: "Pending",
+    },
+    otherBills: {
+      water: { type: Number, default: 0, min: 0 },
+      maintenance: { type: Number, default: 0, min: 0 },
+      custom: { type: Number, default: 0, min: 0 },
+      customDescription: { type: String, default: "" },
+    },
+    deleteRequest: {
+      requested: { type: Boolean, default: false },
+      reason: { type: String, default: "" },
+      requestedAt: { type: Date, default: null },
     },
   },
   { timestamps: true }
@@ -81,10 +92,14 @@ billSchema.pre("validate", async function (next) {
     // Compute units consumed
     this.unitsConsumed = this.currentReading - this.previousReading;
 
-    // Compute total: room rent + (units * rate)
+    // Compute total: room rent + (units * rate) + other bills
     const rate = room.perUnitRate || 0;
     const rent = room.pricePerMonth || 0;
-    this.totalAmount = rent + this.unitsConsumed * rate;
+    const electricityBill = this.unitsConsumed * rate;
+    const otherBillsTotal = (this.otherBills?.water || 0) + 
+                           (this.otherBills?.maintenance || 0) + 
+                           (this.otherBills?.custom || 0);
+    this.totalAmount = rent + electricityBill + otherBillsTotal;
 
     next();
   } catch (err) {
@@ -106,8 +121,9 @@ billSchema.post("save", async function (doc, next) {
 
 // Indexes for quick lookups
 billSchema.index({ landlord: 1 });
-billSchema.index({ tenant: 1 });
+billSchema.index({ renter: 1 });
 billSchema.index({ status: 1 });
 billSchema.index({ month: 1 });
+billSchema.index({ deleteRequest: 1 });
 
 module.exports = mongoose.model("Bill", billSchema);
