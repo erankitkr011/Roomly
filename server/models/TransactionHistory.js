@@ -27,6 +27,7 @@ const transactionHistorySchema = new mongoose.Schema(
       ref: "Room",
       required: true,
     },
+    house: { type: mongoose.Schema.Types.ObjectId, ref: "House", required: true },
     amount: {
       type: Number,
       required: true,

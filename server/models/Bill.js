@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const billSchema = new mongoose.Schema(
   {
+    house: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "House",
+      required: true,
+    },
     room: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Room",
@@ -80,13 +85,18 @@ billSchema.pre("validate", async function (next) {
     if (!room) return next(new Error("Room not found"));
 
     // Auto-set previousReading if not provided
-    if (this.isNew && (this.previousReading === undefined || this.previousReading === null)) {
+    if (
+      this.isNew &&
+      (this.previousReading === undefined || this.previousReading === null)
+    ) {
       this.previousReading = room.currentMeterReading || 0;
     }
 
     // Prevent invalid readings
     if (this.currentReading < this.previousReading) {
-      return next(new Error("Current reading cannot be less than previous reading"));
+      return next(
+        new Error("Current reading cannot be less than previous reading")
+      );
     }
 
     // Compute units consumed
@@ -96,9 +106,10 @@ billSchema.pre("validate", async function (next) {
     const rate = room.perUnitRate || 0;
     const rent = room.pricePerMonth || 0;
     const electricityBill = this.unitsConsumed * rate;
-    const otherBillsTotal = (this.otherBills?.water || 0) + 
-                           (this.otherBills?.maintenance || 0) + 
-                           (this.otherBills?.custom || 0);
+    const otherBillsTotal =
+      (this.otherBills?.water || 0) +
+      (this.otherBills?.maintenance || 0) +
+      (this.otherBills?.custom || 0);
     this.totalAmount = rent + electricityBill + otherBillsTotal;
 
     next();

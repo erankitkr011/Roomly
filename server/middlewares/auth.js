@@ -41,10 +41,17 @@ exports.auth = async (req, res, next) => {
 exports.isLandlord = async (req, res, next) => {
   try {
     const userDetails = await User.findById(req.user.id);
-    if (userDetails.accountType !== "Landlord") {
+    
+    // Check if user is Admin (admins have all permissions)
+    if (userDetails.accountType === "Admin") {
+      return next();
+    }
+    
+    // Check if user has landlord role
+    if (!userDetails.roles?.isLandlord) {
       return res.status(403).json({
         success: false,
-        message: "This is a protected route for Landlords only",
+        message: "This is a protected route for Landlords only. You need to add a house first to become a landlord.",
       });
     }
     next();
@@ -60,10 +67,17 @@ exports.isLandlord = async (req, res, next) => {
 exports.isRenter = async (req, res, next) => {
   try {
     const userDetails = await User.findById(req.user.id);
-    if (userDetails.accountType !== "Renter") {
+    
+    // Check if user is Admin (admins have all permissions)
+    if (userDetails.accountType === "Admin") {
+      return next();
+    }
+    
+    // Check if user has renter role
+    if (!userDetails.roles?.isRenter) {
       return res.status(403).json({
         success: false,
-        message: "This is a protected route for Renters only",
+        message: "This is a protected route for Renters only. You need to be allocated to a room first.",
       });
     }
     next();

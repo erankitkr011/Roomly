@@ -28,8 +28,19 @@ const userSchema = new mongoose.Schema(
     },
     accountType: {
       type: String,
-      enum: ["Admin", "Landlord", "Renter"],
+      enum: ["Admin", "User"],
+      default: "User",
       required: true,
+    },
+    roles: {
+      isLandlord: {
+        type: Boolean,
+        default: false,
+      },
+      isRenter: {
+        type: Boolean,
+        default: false,
+      },
     },
     additionalDetails: {
       type: mongoose.Schema.Types.ObjectId,

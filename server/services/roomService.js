@@ -1,5 +1,7 @@
 const Room = require("../models/Room");
 const User = require("../models/User");
+const House = require("../models/House");
+const Floor = require("../models/Floor");
 const Notification = require("../models/Notification");
 
 /**
@@ -20,7 +22,7 @@ exports.allocateRoomToRenter = async (roomId, renterId, landlordId) => {
   const room = await this.verifyRoomOwnership(roomId, landlordId);
 
   const renter = await User.findById(renterId);
-  if (!renter || renter.accountType !== "Renter") {
+  if (!renter) {
     throw new Error("Renter not found");
   }
 
@@ -31,6 +33,25 @@ exports.allocateRoomToRenter = async (roomId, renterId, landlordId) => {
   room.renter = renterId;
   room.status = "Occupied";
   await room.save();
+
+  // Update user to become a renter
+  await User.findByIdAndUpdate(renterId, {
+    "roles.isRenter": true,
+  });
+
+  // Update floor occupied units count
+  const floor = await Floor.findById(room.floor);
+  if (floor) {
+    floor.occupiedUnits = await Room.countDocuments({ floor: room.floor, status: "Occupied" });
+    await floor.save();
+  }
+
+  // Update house occupied units count
+  const house = await House.findById(room.house);
+  if (house) {
+    house.occupiedUnits = await Room.countDocuments({ house: room.house, status: "Occupied" });
+    await house.save();
+  }
 
   await Notification.create({
     sender: landlordId,
@@ -51,7 +72,7 @@ exports.updateAllocatedRoom = async (roomId, updates, landlordId) => {
   if (updates.pricePerMonth !== undefined) room.pricePerMonth = updates.pricePerMonth;
   if (updates.perUnitRate !== undefined) room.perUnitRate = updates.perUnitRate;
   if (updates.features) room.features = updates.features;
-  if (updates.floorNo !== undefined) room.floorNo = updates.floorNo;
+  if (updates.images) room.images = updates.images;
 
   await room.save();
 
@@ -71,11 +92,35 @@ exports.updateAllocatedRoom = async (roomId, updates, landlordId) => {
  * Create vacant room
  */
 exports.createVacantRoom = async (roomData, landlordId) => {
+  const { houseId, floorId } = roomData;
+
+  // Verify house belongs to landlord
+  const house = await House.findOne({ _id: houseId, landlord: landlordId });
+  if (!house) {
+    throw new Error("House not found or doesn't belong to you");
+  }
+
+  // Verify floor belongs to the house
+  const floor = await Floor.findOne({ _id: floorId, house: houseId });
+  if (!floor) {
+    throw new Error("Floor not found or doesn't belong to this house");
+  }
+
   const room = await Room.create({
     ...roomData,
+    house: houseId,
+    floor: floorId,
     landlord: landlordId,
     status: "Vacant",
   });
+
+  // Update floor total units count
+  floor.totalUnits = await Room.countDocuments({ floor: floorId });
+  await floor.save();
+
+  // Update house total units count
+  house.totalUnits = await Room.countDocuments({ house: houseId });
+  await house.save();
 
   return room;
 };
@@ -91,7 +136,7 @@ exports.updateVacantRoom = async (roomId, updates, landlordId) => {
   }
 
   Object.keys(updates).forEach((key) => {
-    if (["houseName", "roomNumber", "roomType", "floorNo", "pricePerMonth", "perUnitRate", "features", "address", "images"].includes(key)) {
+    if (["roomNumber", "roomType", "pricePerMonth", "perUnitRate", "features", "images"].includes(key)) {
       room[key] = updates[key];
     }
   });
@@ -101,13 +146,50 @@ exports.updateVacantRoom = async (roomId, updates, landlordId) => {
 };
 
 /**
+ * Delete vacant room
+ */
+exports.deleteVacantRoom = async (roomId, landlordId) => {
+  const room = await this.verifyRoomOwnership(roomId, landlordId);
+
+  if (room.status !== "Vacant") {
+    throw new Error("Can only delete vacant rooms. Please remove the tenant first.");
+  }
+
+  // Update floor total units count
+  const floor = await Floor.findById(room.floor);
+  if (floor) {
+    await Room.findByIdAndDelete(roomId);
+    floor.totalUnits = await Room.countDocuments({ floor: room.floor });
+    await floor.save();
+  }
+
+  // Update house total units count
+  const house = await House.findById(room.house);
+  if (house) {
+    house.totalUnits = await Room.countDocuments({ house: room.house });
+    await house.save();
+  }
+
+  return { message: "Room deleted successfully" };
+};
+
+/**
  * Search vacant rooms
  */
 exports.searchVacantRooms = async (filters) => {
   const query = { status: "Vacant" };
 
   if (filters.location) {
-    query["address.city"] = { $regex: filters.location, $options: "i" };
+    // Search in house address since rooms don't have individual addresses anymore
+    const houses = await House.find({
+      $or: [
+        { "address.city": { $regex: filters.location, $options: "i" } },
+        { "address.state": { $regex: filters.location, $options: "i" } },
+      ],
+    }).select("_id");
+    
+    const houseIds = houses.map((h) => h._id);
+    query.house = { $in: houseIds };
   }
 
   if (filters.roomType) {
@@ -122,8 +204,49 @@ exports.searchVacantRooms = async (filters) => {
 
   const rooms = await Room.find(query)
     .populate("landlord", "firstName lastName email")
+    .populate("house", "name address")
+    .populate("floor", "floorNumber floorName")
     .sort({ createdAt: -1 });
 
   return rooms;
 };
+
+/**
+ * Get all rooms for a landlord's house
+ */
+exports.getRoomsByHouse = async (houseId, landlordId) => {
+  const house = await House.findOne({ _id: houseId, landlord: landlordId });
+  if (!house) {
+    throw new Error("House not found or doesn't belong to you");
+  }
+
+  const rooms = await Room.find({ house: houseId })
+    .populate("renter", "firstName lastName email image")
+    .populate("floor", "floorNumber floorName")
+    .sort({ "floor.floorNumber": 1, roomNumber: 1 });
+
+  return rooms;
+};
+
+/**
+ * Get all rooms for a landlord's floor
+ */
+exports.getRoomsByFloor = async (floorId, landlordId) => {
+  const floor = await Floor.findById(floorId).populate("house");
+  if (!floor) {
+    throw new Error("Floor not found");
+  }
+
+  if (floor.house.landlord.toString() !== landlordId) {
+    throw new Error("You don't have permission to view this floor");
+  }
+
+  const rooms = await Room.find({ floor: floorId })
+    .populate("renter", "firstName lastName email image")
+    .sort({ roomNumber: 1 });
+
+  return rooms;
+};
+
+module.exports = exports;
 

@@ -2,10 +2,15 @@ const mongoose = require("mongoose");
 
 const roomSchema = new mongoose.Schema(
   {
-    houseName: {
-      type: String,
-      required: false,
-      trim: true,
+    house: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "House",
+      required: true,
+    },
+    floor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Floor",
+      required: true,
     },
     roomNumber: {
       type: String,
@@ -15,11 +20,6 @@ const roomSchema = new mongoose.Schema(
       type: String,
       enum: ["Room", "Flat", "Shop"],
       required: true,
-    },
-    floorNo: {
-      type: Number,
-      required: true,
-      min: 0,
     },
     pricePerMonth: {
       type: Number,
@@ -51,20 +51,6 @@ const roomSchema = new mongoose.Schema(
       enum: ["Vacant", "OccupiedVacant", "Occupied"],
       default: "Vacant",
     },
-    // location: {
-    //   type: String,
-    //   required: true,
-    //   trim: true,
-    // },
-    address: {
-      houseNo: { type: String, trim: true },
-      village: { type: String, trim: true },
-      landmark: { type: String, trim: true },
-      city: { type: String, required: true, trim: true },
-      state: { type: String, required: true, trim: true },
-      pincode: { type: String, required: true, trim: true },
-    },
-
     images: {
       type: [String],
       default: [],
@@ -79,6 +65,8 @@ const roomSchema = new mongoose.Schema(
 );
 
 roomSchema.index({ landlord: 1 });
+roomSchema.index({ house: 1 });
+roomSchema.index({ floor: 1 });
 roomSchema.index({ status: 1 });
 
 module.exports = mongoose.model("Room", roomSchema);

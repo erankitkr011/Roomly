@@ -44,11 +44,7 @@ exports.sendOtp = async (email) => {
  * Signup new user
  */
 exports.signup = async (userData) => {
-  const { firstName, lastName, middleName, email, password, accountType, otp } = userData;
-
-  if (!["Admin", "Landlord", "Renter"].includes(accountType)) {
-    throw new Error("Invalid account type");
-  }
+  const { firstName, lastName, middleName, email, password, otp } = userData;
 
   const existingUser = await User.findOne({ email: email.toLowerCase() });
   if (existingUser) {
@@ -72,13 +68,18 @@ exports.signup = async (userData) => {
 
   const image = `https://api.dicebear.com/5.x/initials/svg?seed=${firstName} ${lastName}`;
 
+  // Create user with dynamic roles - accountType is now just "User" or "Admin"
   const user = await User.create({
     firstName,
     middleName: middleName || "",
     lastName,
     email: email.toLowerCase(),
     password: hashedPassword,
-    accountType,
+    accountType: "User", // Default to User, roles will be determined by actions
+    roles: {
+      isLandlord: false,
+      isRenter: false,
+    },
     additionalDetails: profile._id,
     image,
   });

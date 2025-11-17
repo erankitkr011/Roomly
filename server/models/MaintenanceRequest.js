@@ -12,6 +12,7 @@ const maintenanceRequestSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    house: { type: mongoose.Schema.Types.ObjectId, ref: "House", required: true },
     room: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Room",

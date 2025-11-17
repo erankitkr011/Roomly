@@ -7,6 +7,12 @@ const paymentSchema = new mongoose.Schema(
       ref: "Bill",
       required: true, // Every payment belongs to a bill
     },
+    house: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "House",
+      required: true,
+    },
+    room: { type: mongoose.Schema.Types.ObjectId, ref: "Room", required: true },
     renter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -15,11 +21,6 @@ const paymentSchema = new mongoose.Schema(
     landlord: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
-    },
-    room: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Room",
       required: true,
     },
     amountPaid: {
@@ -66,10 +67,16 @@ const paymentSchema = new mongoose.Schema(
 
 // Auto-update bill status when payment is successful
 paymentSchema.post("save", async function (doc, next) {
-  if (doc.status === "Successful") {
-    await mongoose.model("Bill").findByIdAndUpdate(doc.bill, { status: "Paid" });
+  try {
+    if (doc.status === "Successful") {
+      await mongoose
+        .model("Bill")
+        .findByIdAndUpdate(doc.bill, { status: "Paid" });
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 });
 
 // Common indexes for queries
