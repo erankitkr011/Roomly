@@ -26,9 +26,9 @@ exports.sendotp = async (req, res) => {
 // Signup new user
 exports.signup = async (req, res) => {
   try {
-    const { firstName, lastName, middleName, email, password, confirmPassword, accountType, otp } = req.body;
+    const { firstName, lastName, middleName, email, password, confirmPassword, otp } = req.body;
 
-    if (!firstName || !lastName || !email || !password || !confirmPassword || !accountType || !otp) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword || !otp) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -48,13 +48,12 @@ exports.signup = async (req, res) => {
       middleName,
       email,
       password,
-      accountType,
       otp,
     });
 
     return res.status(200).json({
       success: true,
-      message: "User registered successfully",
+      message: "User registered successfully. Your role will be determined by your actions.",
       user,
     });
   } catch (error) {

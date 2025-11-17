@@ -3,8 +3,226 @@ const roomService = require("../services/roomService");
 const billService = require("../services/billService");
 const paymentService = require("../services/paymentService");
 const notificationService = require("../services/notificationService");
+const houseService = require("../services/houseService");
 
-// Add renter by email
+// ==================== HOUSE MANAGEMENT ====================
+
+// Create a new house
+exports.createHouse = async (req, res) => {
+  try {
+    const { name, description, address, images } = req.body;
+    if (!name || !address || !address.city || !address.state || !address.pincode) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and complete address are required",
+      });
+    }
+    const house = await houseService.createHouse(req.body, req.user.id);
+    return res.status(201).json({
+      success: true,
+      message: "House created successfully",
+      house,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error creating house",
+    });
+  }
+};
+
+// Get all houses for landlord
+exports.getAllHouses = async (req, res) => {
+  try {
+    const houses = await houseService.getLandlordHouses(req.user.id);
+    return res.status(200).json({
+      success: true,
+      count: houses.length,
+      houses,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error fetching houses",
+    });
+  }
+};
+
+// Get single house details with overview
+exports.getHouseOverview = async (req, res) => {
+  try {
+    const overview = await houseService.getHouseOverview(req.params.houseId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      data: overview,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error fetching house overview",
+    });
+  }
+};
+
+// Update house
+exports.updateHouse = async (req, res) => {
+  try {
+    const house = await houseService.updateHouse(req.params.houseId, req.body, req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: "House updated successfully",
+      house,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error updating house",
+    });
+  }
+};
+
+// Delete house
+exports.deleteHouse = async (req, res) => {
+  try {
+    const result = await houseService.deleteHouse(req.params.houseId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error deleting house",
+    });
+  }
+};
+
+// Add floor to house
+exports.addFloor = async (req, res) => {
+  try {
+    const { floorNumber, floorName } = req.body;
+    if (floorNumber === undefined || floorNumber === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Floor number is required",
+      });
+    }
+    const floor = await houseService.addFloor(req.params.houseId, req.body, req.user.id);
+    return res.status(201).json({
+      success: true,
+      message: "Floor added successfully",
+      floor,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error adding floor",
+    });
+  }
+};
+
+// Get all floors for a house
+exports.getHouseFloors = async (req, res) => {
+  try {
+    const floors = await houseService.getHouseFloors(req.params.houseId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      count: floors.length,
+      floors,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error fetching floors",
+    });
+  }
+};
+
+// Update floor
+exports.updateFloor = async (req, res) => {
+  try {
+    const floor = await houseService.updateFloor(req.params.floorId, req.body, req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: "Floor updated successfully",
+      floor,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error updating floor",
+    });
+  }
+};
+
+// Delete floor
+exports.deleteFloor = async (req, res) => {
+  try {
+    const result = await houseService.deleteFloor(req.params.floorId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error deleting floor",
+    });
+  }
+};
+
+// Get floor with all units
+exports.getFloorWithUnits = async (req, res) => {
+  try {
+    const data = await houseService.getFloorWithUnits(req.params.floorId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error fetching floor details",
+    });
+  }
+};
+
+// Get all rooms for a house
+exports.getHouseRooms = async (req, res) => {
+  try {
+    const rooms = await roomService.getRoomsByHouse(req.params.houseId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      count: rooms.length,
+      rooms,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error fetching rooms",
+    });
+  }
+};
+
+// Get all rooms for a floor
+exports.getFloorRooms = async (req, res) => {
+  try {
+    const rooms = await roomService.getRoomsByFloor(req.params.floorId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      count: rooms.length,
+      rooms,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message || "Error fetching rooms",
+    });
+  }
+};
+
+// ==================== RENTER MANAGEMENT ====================
+
 exports.addRenter = async (req, res) => {
   try {
     const { email, roomId } = req.body;
@@ -203,21 +421,21 @@ exports.payCashBill = async (req, res) => {
 // Post vacant room
 exports.postVacantRoom = async (req, res) => {
   try {
-    const { houseName, roomNumber, roomType, floorNo, pricePerMonth, perUnitRate, features, address, images } = req.body;
-    if (!roomNumber || !roomType || !floorNo || !pricePerMonth || !address) {
+    const { houseId, floorId, roomNumber, roomType, pricePerMonth, perUnitRate, features, images } = req.body;
+    if (!houseId || !floorId || !roomNumber || !roomType || !pricePerMonth) {
       return res.status(400).json({
         success: false,
-        message: "Required fields are missing",
+        message: "House, floor, room number, room type, and price are required",
       });
     }
     const room = await roomService.createVacantRoom(req.body, req.user.id);
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
       message: "Vacant room posted successfully",
       room,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
       message: error.message || "Error posting vacant room",
     });
@@ -237,6 +455,22 @@ exports.updateVacantRoom = async (req, res) => {
     return res.status(403).json({
       success: false,
       message: error.message || "Error updating room",
+    });
+  }
+};
+
+// Delete vacant room
+exports.deleteVacantRoom = async (req, res) => {
+  try {
+    const result = await roomService.deleteVacantRoom(req.params.roomId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error deleting room",
     });
   }
 };

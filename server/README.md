@@ -1,16 +1,44 @@
 # Roomly Backend API
 
-Backend API for Roomly - A comprehensive property management system for landlords and renters.
+Backend API for Roomly - A comprehensive multi-house property management system for landlords and renters.
 
-## 🚀 Features
+## 🎉 New Multi-House Management System
 
-- **Authentication & Authorization**: JWT-based auth with role-based access control (Landlord, Renter, Admin)
-- **Property Management**: Add, update, and manage rooms/flats/shops
+**Major Update:** Roomly now supports a flexible house → floor → room hierarchy!
+
+### Key Features:
+
+✅ **Multiple Houses per Landlord**
+- Manage multiple properties from one account
+- Example: "Ankit Bhawan", "Ankush Bhawan"
+
+✅ **Floor-Based Organization**
+- Each house can have multiple floors
+- Ground Floor, First Floor, Second Floor, etc.
+- Each floor contains multiple units (rooms/flats/shops)
+
+✅ **Dynamic User Roles**
+- No need to choose role during signup
+- Become a **Landlord** when you add your first house
+- Become a **Renter** when allocated to a room
+- **Same user can be both** landlord and renter simultaneously
+
+✅ **Smart Room Management**
+- Delete rooms only if vacant (prevents accidental data loss)
+- House-level address storage
+- Better property grouping and reporting
+
+## 🚀 Core Features
+
+- **Multi-House Management**: Organize properties by houses and floors
+- **Authentication & Authorization**: JWT-based auth with dynamic role assignment
+- **Property Management**: Add, update, and manage rooms/flats/shops across multiple properties
 - **Billing System**: Automated electricity bill calculation with manual other bills
 - **Payment Integration**: Razorpay integration for online payments
 - **Chat System**: One-to-one chat between landlord-renter and controlled renter-to-renter chat
 - **Notifications**: In-app and email notifications
 - **File Upload**: Cloudinary integration for image uploads
+- **Unified Dashboard**: View both landlord and renter sections in one place
 
 ## 📋 Prerequisites
 
