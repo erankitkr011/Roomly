@@ -87,11 +87,12 @@ router.get("/stats", auth, async (req, res) => {
 
     // If user is a renter, get renter stats
     if (user.roles?.isRenter) {
-      const room = await Room.findOne({ renter: userId })
+      const rooms = await Room.find({ renter: userId })
         .populate("house", "name address")
         .populate("floor", "floorNumber floorName")
         .populate("landlord", "firstName lastName email contactNumber");
 
+      // Aggregate totals across all rooms
       const totalBills = await Bill.countDocuments({ renter: userId });
       const pendingBills = await Bill.countDocuments({
         renter: userId,
@@ -117,24 +118,71 @@ router.get("/stats", auth, async (req, res) => {
         },
       ]);
 
-      // Get recent bills
+      // Get recent bills (across all rooms)
       const recentBills = await Bill.find({ renter: userId })
         .sort({ createdAt: -1 })
         .limit(5)
-        .select("month totalAmount status createdAt");
+        .select("month totalAmount status createdAt room");
+
+      // Build per-room stats
+      const roomsWithStats = await Promise.all(
+        rooms.map(async (room) => {
+          const roomId = room._id;
+
+          const roomTotalBills = await Bill.countDocuments({ renter: userId, room: roomId });
+          const roomPendingBills = await Bill.countDocuments({
+            renter: userId,
+            room: roomId,
+            status: { $in: ["Pending", "Verified"] },
+          });
+          const roomPaidBills = await Bill.countDocuments({
+            renter: userId,
+            room: roomId,
+            status: "Paid",
+          });
+
+          const roomTotalPaid = await Payment.aggregate([
+            {
+              $match: {
+                renter: userId,
+                room: roomId,
+                status: "Successful",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: "$amountPaid" },
+              },
+            },
+          ]);
+
+          const roomRecentBills = await Bill.find({ renter: userId, room: roomId })
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .select("month totalAmount status createdAt");
+
+          return {
+            id: room._id,
+            roomNumber: room.roomNumber,
+            roomType: room.roomType,
+            pricePerMonth: room.pricePerMonth,
+            house: room.house,
+            floor: room.floor,
+            landlord: room.landlord,
+            stats: {
+              totalBills: roomTotalBills,
+              pendingBills: roomPendingBills,
+              paidBills: roomPaidBills,
+              totalPaid: roomTotalPaid[0]?.total || 0,
+              recentBills: roomRecentBills,
+            },
+          };
+        })
+      );
 
       stats.renterStats = {
-        room: room
-          ? {
-              id: room._id,
-              roomNumber: room.roomNumber,
-              roomType: room.roomType,
-              pricePerMonth: room.pricePerMonth,
-              house: room.house,
-              floor: room.floor,
-              landlord: room.landlord,
-            }
-          : null,
+        rooms: roomsWithStats,
         totalBills,
         pendingBills,
         paidBills,
@@ -145,8 +193,8 @@ router.get("/stats", auth, async (req, res) => {
 
     // Get unread notifications count
     stats.unreadNotifications = await Notification.countDocuments({
-      receiver: userId,
-      read: false,
+      targetTenants: userId,
+      isReadBy: { $ne: userId },
     });
 
     return res.status(200).json({

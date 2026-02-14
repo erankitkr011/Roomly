@@ -16,7 +16,7 @@ exports.sendotp = async (req, res) => {
       message: "OTP sent successfully to your email",
     });
   } catch (error) {
-    return res.status(401).json({
+    return res.status(409).json({
       success: false,
       message: error.message || "Something went wrong while sending otp",
     });
@@ -205,6 +205,47 @@ exports.logout = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error logging out",
+    });
+  }
+};
+
+// Request account removal
+exports.requestAccountRemoval = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Reason for account removal is required",
+      });
+    }
+
+    const RemovalRequest = require("../models/RemovalRequest");
+
+    const existing = await RemovalRequest.findOne({
+      user: req.user.id,
+      status: "Pending",
+    });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have a pending removal request",
+      });
+    }
+
+    await RemovalRequest.create({
+      user: req.user.id,
+      reason: reason.trim(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Account removal request submitted. Admin will review it.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error submitting removal request",
     });
   }
 };

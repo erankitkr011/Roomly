@@ -14,8 +14,9 @@ exports.handleAddRenter = async (email, landlordId, roomId = null) => {
   const existingUser = await User.findOne({ email: email.toLowerCase() });
 
   if (existingUser) {
-    if (existingUser.accountType !== "Renter") {
-      throw new Error("User exists but is not a renter");
+    // Can't add yourself as a renter
+    if (existingUser._id.toString() === landlordId.toString()) {
+      throw new Error("You cannot add yourself as a renter");
     }
 
     await Notification.create({
@@ -28,7 +29,7 @@ exports.handleAddRenter = async (email, landlordId, roomId = null) => {
     return { type: "notification", message: "Notification sent to renter for approval" };
   } else {
     const token = crypto.randomBytes(32).toString("hex");
-    const inviteLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/accept-invite/${token}`;
+    const inviteLink = `${process.env.FRONTEND_URL || "http://localhost:5173"}/accept-invite/${token}`;
 
     await RenterInvite.create({
       email: email.toLowerCase(),
@@ -107,6 +108,8 @@ exports.getAllRentersForLandlord = async (landlordId) => {
       roomNumber: room.roomNumber,
       roomType: room.roomType,
       pricePerMonth: room.pricePerMonth,
+      perUnitRate: room.perUnitRate || 8,
+      currentMeterReading: room.currentMeterReading || 0,
     },
   }));
 };

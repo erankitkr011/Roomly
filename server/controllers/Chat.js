@@ -1,5 +1,20 @@
 const chatService = require("../services/chatService");
 
+// Get all chats for logged in user
+exports.getMyChats = async (req, res) => {
+  try {
+    const chats = await chatService.getMyChats(req.user.id);
+    return res.status(200).json({
+      success: true,
+      chats,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error fetching chats",
+    });
+  }
+};
 // Send message to renter (Landlord)
 exports.sendMessageToRenter = async (req, res) => {
   try {

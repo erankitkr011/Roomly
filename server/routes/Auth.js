@@ -8,6 +8,7 @@ const {
   resetPasswordToken,
   resetPassword,
   logout,
+  requestAccountRemoval,
 } = require("../controllers/Auth");
 const { auth } = require("../middlewares/auth");
 
@@ -21,6 +22,6 @@ router.post("/reset-password", resetPassword);
 // Protected routes
 router.put("/change-password", auth, changePassword);
 router.post("/logout", auth, logout);
+router.post("/request-removal", auth, requestAccountRemoval);
 
 module.exports = router;
-

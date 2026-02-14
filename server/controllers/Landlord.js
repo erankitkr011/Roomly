@@ -260,8 +260,8 @@ exports.updateRenter = async (req, res) => {
 // Allocate room to renter
 exports.allocateRoom = async (req, res) => {
   try {
-    const { renterId, roomId } = req.body;
-    const room = await roomService.allocateRoomToRenter(roomId, renterId, req.user.id);
+    const { renterId, roomId, advanceAmount } = req.body;
+    const room = await roomService.allocateRoomToRenter(roomId, renterId, req.user.id, advanceAmount || 0);
     return res.status(200).json({
       success: true,
       message: "Room allocated successfully",
@@ -414,6 +414,23 @@ exports.payCashBill = async (req, res) => {
     return res.status(400).json({
       success: false,
       message: error.message || "Error processing payment",
+    });
+  }
+};
+
+// Approve cash payment (renter-initiated)
+exports.approveCashPayment = async (req, res) => {
+  try {
+    const payment = await paymentService.approveCashPayment(req.params.paymentId, req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: "Cash payment approved successfully",
+      payment,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Error approving payment",
     });
   }
 };

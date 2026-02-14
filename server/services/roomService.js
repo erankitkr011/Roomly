@@ -18,7 +18,7 @@ exports.verifyRoomOwnership = async (roomId, landlordId) => {
 /**
  * Allocate room to renter
  */
-exports.allocateRoomToRenter = async (roomId, renterId, landlordId) => {
+exports.allocateRoomToRenter = async (roomId, renterId, landlordId, advanceAmount = 0) => {
   const room = await this.verifyRoomOwnership(roomId, landlordId);
 
   const renter = await User.findById(renterId);
@@ -32,6 +32,9 @@ exports.allocateRoomToRenter = async (roomId, renterId, landlordId) => {
 
   room.renter = renterId;
   room.status = "Occupied";
+  if (advanceAmount > 0) {
+    room.advanceAmount = advanceAmount;
+  }
   await room.save();
 
   // Update user to become a renter

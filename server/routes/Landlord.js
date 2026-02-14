@@ -26,12 +26,14 @@ const {
   getAllRenters,
   getRenterBills,
   payCashBill,
+  approveCashPayment,
   postVacantRoom,
   updateVacantRoom,
   deleteVacantRoom,
   deleteRenter,
 } = require("../controllers/Landlord");
 const {
+  getMyChats,
   sendMessageToRenter,
   getChatWithRenter,
   enableRenterChat,
@@ -39,11 +41,13 @@ const {
 } = require("../controllers/Chat");
 const { auth, isLandlord } = require("../middlewares/auth");
 
-// All routes require authentication and landlord role
+// Create house is open to any authenticated user (makes them a landlord)
+router.post("/house", auth, createHouse);
+
+// All remaining routes require authentication and landlord role
 router.use(auth, isLandlord);
 
 // House management
-router.post("/house", createHouse);
 router.get("/houses", getAllHouses);
 router.get("/house/:houseId/overview", getHouseOverview);
 router.put("/house/:houseId", updateHouse);
@@ -77,11 +81,13 @@ router.put("/update-bill/:billId", updateBill);
 router.post("/request-delete-bill/:billId", requestDeleteBill);
 router.get("/renter-bills/:renterId", getRenterBills);
 router.post("/pay-cash-bill/:billId", payCashBill);
+router.post("/approve-cash-payment/:paymentId", approveCashPayment);
 
 // Notifications
 router.post("/send-notification", sendNotification);
 
 // Chat
+router.get("/my-chats", getMyChats);
 router.post("/chat/:renterId", sendMessageToRenter);
 router.get("/chat/:renterId", getChatWithRenter);
 router.post("/enable-renter-chat", enableRenterChat);

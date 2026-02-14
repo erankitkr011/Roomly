@@ -68,21 +68,60 @@ exports.signup = async (userData) => {
 
   const image = `https://api.dicebear.com/5.x/initials/svg?seed=${firstName} ${lastName}`;
 
-  // Create user with dynamic roles - accountType is now just "User" or "Admin"
+  // Check for pending renter invites
+  const RenterInvite = require("../models/RenterInvite");
+  const Room = require("../models/Room");
+  const pendingInvite = await RenterInvite.findOne({
+    email: email.toLowerCase(),
+    status: "Pending",
+    expiresAt: { $gt: new Date() },
+  });
+
+  const isRenter = !!pendingInvite;
+
+  // Create user with dynamic roles
   const user = await User.create({
     firstName,
     middleName: middleName || "",
     lastName,
     email: email.toLowerCase(),
     password: hashedPassword,
-    accountType: "User", // Default to User, roles will be determined by actions
+    accountType: "User",
     roles: {
       isLandlord: false,
-      isRenter: false,
+      isRenter,
     },
     additionalDetails: profile._id,
     image,
   });
+
+  // Auto-link renter invite if exists
+  if (pendingInvite && pendingInvite.room) {
+    const room = await Room.findById(pendingInvite.room);
+    if (room && room.status !== "Occupied") {
+      room.renter = user._id;
+      room.status = "Occupied";
+      await room.save();
+    }
+    pendingInvite.status = "Accepted";
+    await pendingInvite.save();
+  }
+
+  // Send welcome email
+  try {
+    await mailSender(
+      user.email,
+      "Welcome to Roomly!",
+      `<div style="font-family: Arial; padding: 20px;">
+        <h2>Welcome to Roomly, ${firstName}!</h2>
+        <p>Your account has been created successfully.</p>
+        ${isRenter ? "<p>You have been automatically linked to a room via an invite from your landlord.</p>" : ""}
+        <p>Start exploring by logging in to your dashboard.</p>
+      </div>`
+    );
+  } catch (emailError) {
+    console.log("Error sending welcome email:", emailError);
+  }
 
   return user;
 };

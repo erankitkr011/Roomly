@@ -53,6 +53,7 @@ exports.createBill = async (billData, landlordId) => {
   }
 
   const bill = await Bill.create({
+    house: room.house,
     room: roomId,
     month,
     currentReading,
@@ -70,9 +71,10 @@ exports.createBill = async (billData, landlordId) => {
 
   await Notification.create({
     sender: landlordId,
-    receiver: room.renter,
+    title: "New Bill",
     message: `New bill generated for ${month}`,
     type: "Bill",
+    targetTenants: [room.renter],
     link: `/renter/bills/${bill._id}`,
   });
 

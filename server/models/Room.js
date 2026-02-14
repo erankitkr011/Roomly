@@ -55,6 +55,11 @@ const roomSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    advanceAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     currentMeterReading: {
       type: Number,
       default: 0, // landlord sets this when assigning a new tenant

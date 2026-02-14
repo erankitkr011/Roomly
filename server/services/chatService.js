@@ -5,6 +5,61 @@ const User = require("../models/User");
 const Notification = require("../models/Notification");
 
 /**
+ * Get all chats for a user
+ */
+exports.getMyChats = async (userId) => {
+  const chats = await Chat.find({
+    participants: userId,
+    isActive: true,
+  })
+    .populate("participants", "firstName lastName email image roles")
+    .sort({ updatedAt: -1 });
+
+  return chats.map((chat) => {
+    const otherParticipant = chat.participants.find(
+      (p) => p._id.toString() !== userId
+    );
+    const lastMessage = chat.messages.length > 0 
+      ? chat.messages[chat.messages.length - 1] 
+      : null;
+    const unreadCount = chat.messages.filter(
+      (m) => m.sender?.toString() !== userId && !m.isRead
+    ).length;
+
+    return {
+      _id: chat._id,
+      chatType: chat.chatType,
+      otherUser: otherParticipant,
+      lastMessage: lastMessage
+        ? { content: lastMessage.content, createdAt: lastMessage.createdAt }
+        : null,
+      unreadCount,
+    };
+  });
+};
+
+/**
+ * Mark all messages in a chat as read for a specific user
+ */
+exports.markAsRead = async (chatId, userId) => {
+  const chat = await Chat.findById(chatId);
+  if (!chat) return 0;
+
+  let count = 0;
+  chat.messages.forEach((msg) => {
+    if (msg.sender?.toString() !== userId && !msg.isRead) {
+      msg.isRead = true;
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    await chat.save();
+  }
+  return count;
+};
+
+/**
  * Find or create landlord-renter chat
  */
 exports.findOrCreateLandlordRenterChat = async (landlordId, renterId) => {
@@ -58,7 +113,7 @@ exports.getChatHistory = async (chatId, populateFields = true) => {
     query = query.populate("participants", "firstName lastName email image");
   }
 
-  const chat = await query.sort({ "messages.createdAt": -1 });
+  const chat = await query;
 
   if (!chat) {
     return null;
@@ -66,7 +121,7 @@ exports.getChatHistory = async (chatId, populateFields = true) => {
 
   return {
     chat,
-    messages: chat.messages.reverse(),
+    messages: chat.messages,
   };
 };
 

@@ -149,16 +149,13 @@ exports.payByCash = async (req, res) => {
   }
 };
 
-// Download invoice
+// Download invoice as PDF
 exports.downloadInvoice = async (req, res) => {
   try {
-    const invoiceData = await paymentService.getInvoiceData(req.params.billId, req.user.id);
-    return res.status(200).json({
-      success: true,
-      message: "Invoice generated",
-      invoice: invoiceData,
-      downloadUrl: invoiceData.payment.invoiceUrl || null,
-    });
+    const pdfBuffer = await paymentService.generateInvoicePDF(req.params.billId, req.user.id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=invoice-${req.params.billId}.pdf`);
+    return res.send(pdfBuffer);
   } catch (error) {
     return res.status(400).json({
       success: false,
